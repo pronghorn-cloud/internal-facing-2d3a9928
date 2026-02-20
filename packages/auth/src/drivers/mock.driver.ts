@@ -19,9 +19,10 @@ export class MockAuthDriver extends BaseAuthDriver {
     super(config)
 
     // REQ-P2-04: Prevent mock auth driver from being used in production
-    if (process.env.NODE_ENV === 'production') {
+    // Allow override via ALLOW_MOCK_IN_PRODUCTION=true for staging/demo deployments
+    if (process.env.NODE_ENV === 'production' && process.env.ALLOW_MOCK_IN_PRODUCTION !== 'true') {
       throw new Error(
-        'MockAuthDriver cannot be used in production. Set AUTH_DRIVER to "entra-id".'
+        'MockAuthDriver cannot be used in production. Set AUTH_DRIVER to "entra-id" or set ALLOW_MOCK_IN_PRODUCTION=true for staging/demo.'
       )
     }
 
