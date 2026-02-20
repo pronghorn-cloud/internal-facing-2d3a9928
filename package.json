@@ -1,0 +1,80 @@
+{
+  "name": "vue-node-alberta-enterprise-template",
+  "version": "1.0.0",
+  "description": "Internal-facing template for Alberta Government applications with GoA Design System, MS Entra ID authentication, service-to-service API layer, TypeScript, and Docker",
+  "private": true,
+  "author": "Alberta Government",
+  "license": "ISC",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm:dev:*\"",
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "start": "npm run start --workspace=apps/api",
+    "prebuild": "npm run clean:build",
+    "build": "npm run build:packages && npm run build:apps",
+    "build:packages": "npm run build --workspace=packages/shared --workspace=packages/config --workspace=packages/auth",
+    "build:apps": "npm run build --workspace=apps/api --workspace=apps/web",
+    "build:api": "npm run build --workspace=apps/api",
+    "build:web": "npm run build --workspace=apps/web",
+    "test": "npm run test --workspaces --if-present",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "test:integration": "vitest run --config tests/integration/vitest.config.ts",
+    "lint": "eslint . --ext .ts,.tsx,.vue --max-warnings 0",
+    "lint:fix": "eslint . --ext .ts,.tsx,.vue --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,vue,json,md,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,vue,json,md,yml,yaml}\"",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck:api": "npm run typecheck --workspace=apps/api",
+    "typecheck:web": "npm run typecheck --workspace=apps/web",
+    "validate-env": "tsx scripts/validate-env.ts",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:build": "docker-compose build",
+    "docker:logs": "docker-compose logs -f",
+    "migrate": "tsx scripts/migrate.ts",
+    "seed": "tsx scripts/seed.ts",
+    "clean": "node -e \"const fs=require('fs');const path=require('path');const rm=p=>{try{fs.rmSync(p,{recursive:true,force:true})}catch{}};rm('node_modules');['apps','packages'].forEach(dir=>fs.readdirSync(dir).forEach(d=>{const base=path.join(dir,d);rm(path.join(base,'node_modules'));rm(path.join(base,'dist'));rm(path.join(base,'tsconfig.tsbuildinfo'))}));\"",
+    "clean:build": "node -e \"const fs=require('fs');const path=require('path');['apps','packages'].forEach(dir=>fs.readdirSync(dir).forEach(d=>{const base=path.join(dir,d);try{fs.rmSync(path.join(base,'dist'),{recursive:true,force:true});fs.rmSync(path.join(base,'tsconfig.tsbuildinfo'),{force:true})}catch{}}));\"",
+    "prepare": "husky install || true"
+  },
+  "dependencies": {
+    "concurrently": "^9.1.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vite": "^5.4.18"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.10.5",
+    "@typescript-eslint/eslint-plugin": "^8.20.0",
+    "@typescript-eslint/parser": "^8.20.0",
+    "@vitest/ui": "^2.1.8",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-vue": "^9.32.0",
+    "husky": "^9.1.7",
+    "prettier": "^3.4.2",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=24.0.0",
+    "npm": ">=10.0.0"
+  },
+  "keywords": [
+    "alberta-government",
+    "goa-design-system",
+    "vue3",
+    "typescript",
+    "express",
+    "entra-id",
+    "service-auth",
+    "authentication",
+    "monorepo",
+    "template"
+  ]
+}

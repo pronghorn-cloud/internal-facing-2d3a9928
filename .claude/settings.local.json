@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run clean:build:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run build:packages:*)",
+      "Bash(ls:*)",
+      "Bash(npm run build:api:*)",
+      "Bash(npm start)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(npm run test:*)",
+      "Bash(npm test:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git branch:*)",
+      "Bash(ssh:*)",
+      "Bash(ssh-add:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(npm install:*)",
+      "Bash(node -e:*)",
+      "Bash(curl:*)",
+      "Bash(__NEW_LINE_6e85f0a94dbae1f5__ echo \"=== Invalid Bearer token \\(expect 401\\) ===\")",
+      "Bash(__NEW_LINE_6e85f0a94dbae1f5__ echo \"=== Basic auth instead of Bearer \\(expect 401\\) ===\")",
+      "Bash(npm run dev:api:*)"
+    ]
+  }
+}

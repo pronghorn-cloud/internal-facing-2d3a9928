@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: template-postgres
+    profiles:
+      - db
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-app_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-appuser}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-appuser}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - template-network
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+      target: development
+    container_name: template-api
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DB_CONNECTION_STRING: ${DB_CONNECTION_STRING:-}
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET in .env}
+      SESSION_STORE: ${SESSION_STORE:-memory}
+      AUTH_DRIVER: mock
+      CORS_ORIGIN: http://localhost:5173
+      LOG_LEVEL: debug
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/api/src:/app/apps/api/src
+      - ./packages:/app/packages
+    networks:
+      - template-network
+    command: npm run dev --workspace=apps/api
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      target: development
+    container_name: template-web
+    environment:
+      VITE_API_URL: http://localhost:3000/api/v1
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./apps/web/src:/app/apps/web/src
+      - ./apps/web/public:/app/apps/web/public
+      - ./packages:/app/packages
+    networks:
+      - template-network
+    command: npm run dev --workspace=apps/web -- --host 0.0.0.0
+
+volumes:
+  postgres_data:
+    name: template-postgres-data
+
+networks:
+  template-network:
+    name: template-network
+    driver: bridge

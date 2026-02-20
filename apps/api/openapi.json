@@ -1,0 +1,593 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Alberta Government Internal API",
+    "description": "Internal-facing API for Alberta Government enterprise template.\n\nSupports two authentication models:\n- **Staff auth** (session-based): MS Entra ID or Mock driver, session cookie\n- **Service-to-service auth** (Bearer token): Azure AD Client Credentials flow\n\n### CSRF Protection\nState-changing requests (POST/PUT/PATCH/DELETE) require a CSRF token.\n1. Call `GET /api/v1/csrf-token` to obtain a token\n2. Include it as the `X-CSRF-Token` header on subsequent requests",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Alberta Government"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local development"
+    }
+  ],
+  "tags": [
+    { "name": "General", "description": "Health, info, and CSRF endpoints (no auth required)" },
+    { "name": "Auth", "description": "Staff authentication (session-based, Entra ID / Mock)" },
+    { "name": "Admin", "description": "Admin endpoints (session + role required)" },
+    { "name": "Public API", "description": "Service-to-service endpoints (Bearer token via Azure AD Client Credentials)" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "sessionAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "connect.sid",
+        "description": "Session cookie set after login via /api/v1/auth/login flow. Log in through the browser first; the cookie is sent automatically."
+      },
+      "csrfToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRF-Token",
+        "description": "CSRF token from GET /api/v1/csrf-token. Required for POST/PUT/PATCH/DELETE requests."
+      },
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Azure AD access token obtained via OAuth 2.0 Client Credentials flow."
+      }
+    },
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string", "example": "UNAUTHORIZED" },
+              "message": { "type": "string", "example": "Authentication required" },
+              "details": { "type": "string" }
+            },
+            "required": ["code", "message"]
+          }
+        },
+        "required": ["success", "error"]
+      },
+      "AuthUser": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "mock-user-1" },
+          "email": { "type": "string", "example": "developer@gov.ab.ca" },
+          "name": { "type": "string", "example": "Mock Developer" },
+          "roles": {
+            "type": "array",
+            "items": { "type": "string" },
+            "example": ["developer", "user"]
+          },
+          "attributes": {
+            "type": "object",
+            "additionalProperties": { "type": "string" },
+            "example": { "department": "Technology Services", "employeeId": "EMP001" }
+          }
+        },
+        "required": ["id", "email", "name", "roles"]
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "tags": ["General"],
+        "summary": "Health check",
+        "description": "Returns application health status including database connectivity.",
+        "operationId": "getHealth",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Application is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "status": { "type": "string", "enum": ["healthy", "degraded"], "example": "healthy" },
+                        "database": { "type": "string", "enum": ["connected", "disconnected", "not_configured", "error"], "example": "not_configured" },
+                        "timestamp": { "type": "string", "format": "date-time" },
+                        "environment": { "type": "string", "example": "development" },
+                        "version": { "type": "string", "example": "1.0.0" },
+                        "pool": {
+                          "type": "object",
+                          "nullable": true,
+                          "description": "Database pool stats (only when PostgreSQL is configured)",
+                          "properties": {
+                            "utilization": { "type": "string", "example": "20%" },
+                            "connections": {
+                              "type": "object",
+                              "properties": {
+                                "total": { "type": "integer" },
+                                "idle": { "type": "integer" },
+                                "active": { "type": "integer" },
+                                "waiting": { "type": "integer" }
+                              }
+                            },
+                            "warnings": {
+                              "type": "array",
+                              "items": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database unhealthy (degraded status)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/info": {
+      "get": {
+        "tags": ["General"],
+        "summary": "API information",
+        "description": "Returns application metadata. In non-production environments, includes feature details and endpoint list.",
+        "operationId": "getInfo",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "API information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "name": { "type": "string", "example": "Alberta Government Internal Application" },
+                        "version": { "type": "string", "example": "v1" },
+                        "description": { "type": "string" },
+                        "features": { "type": "object" },
+                        "endpoints": { "type": "object" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/csrf-token": {
+      "get": {
+        "tags": ["General"],
+        "summary": "Get CSRF token",
+        "description": "Returns a CSRF token to include as `X-CSRF-Token` header on state-changing requests (POST, PUT, PATCH, DELETE).",
+        "operationId": "getCsrfToken",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "CSRF token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "csrfToken": { "type": "string", "example": "eifgHEyB-PaOS4Oo6yqRu9M1LcaCGfCfTUV8" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Initiate login",
+        "description": "Redirects to the identity provider (Entra ID or mock callback). Rate limited to 5 attempts per 15 minutes.",
+        "operationId": "login",
+        "security": [],
+        "responses": {
+          "302": {
+            "description": "Redirect to identity provider",
+            "headers": {
+              "Location": {
+                "description": "IdP login URL or mock callback URL",
+                "schema": { "type": "string", "example": "http://localhost:3000/api/v1/auth/callback?mockUserId=mock-user-1" }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "success": false,
+                  "error": { "code": "AUTH_RATE_LIMIT_EXCEEDED", "message": "Too many authentication attempts, please try again later" }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Login initiation failed",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/callback": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Authentication callback",
+        "description": "Handles the callback from the identity provider. Sets session cookie and redirects to frontend. Rate limited.",
+        "operationId": "authCallback",
+        "security": [],
+        "parameters": [
+          {
+            "name": "mockUserId",
+            "in": "query",
+            "description": "Mock user ID (mock driver only). Available: mock-user-1 (developer), mock-user-2 (admin), mock-user-3 (user)",
+            "schema": { "type": "string", "example": "mock-user-1" }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to frontend after successful authentication",
+            "headers": {
+              "Location": {
+                "description": "Frontend profile page URL",
+                "schema": { "type": "string", "example": "http://localhost:5173/profile" }
+              },
+              "Set-Cookie": {
+                "description": "Session cookie",
+                "schema": { "type": "string" }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Logout",
+        "description": "Destroys the current session. Requires authentication and a valid CSRF token.",
+        "operationId": "logout",
+        "security": [
+          { "sessionAuth": [], "csrfToken": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logged out successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "message": { "type": "string", "example": "Logged out successfully" }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF token missing or invalid",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "missing": {
+                    "summary": "CSRF token missing",
+                    "value": { "success": false, "error": { "code": "CSRF_MISSING", "message": "CSRF token missing" } }
+                  },
+                  "invalid": {
+                    "summary": "CSRF token invalid",
+                    "value": { "success": false, "error": { "code": "CSRF_INVALID", "message": "Invalid CSRF token" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Get current user",
+        "description": "Returns the profile of the currently authenticated user.",
+        "operationId": "getMe",
+        "security": [
+          { "sessionAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current user profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": { "$ref": "#/components/schemas/AuthUser" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "success": false,
+                  "error": { "code": "UNAUTHORIZED", "message": "Authentication required", "details": "You must be logged in to access this resource" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/status": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Check authentication status",
+        "description": "Returns whether the current session is authenticated and which auth driver is active.",
+        "operationId": "getAuthStatus",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Authentication status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "authenticated": { "type": "boolean", "example": false },
+                        "driver": { "type": "string", "enum": ["mock", "entra-id"], "example": "mock" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/users": {
+      "get": {
+        "tags": ["Admin"],
+        "summary": "List users (example)",
+        "description": "Example role-protected endpoint. Requires the `admin` role. Replace with your admin logic.",
+        "operationId": "getAdminUsers",
+        "security": [
+          { "sessionAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "Admin endpoint response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "message": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permissions (requires admin role)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "success": false,
+                  "error": { "code": "FORBIDDEN", "message": "Insufficient permissions", "details": "Required role(s): admin" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/health": {
+      "get": {
+        "tags": ["Public API"],
+        "summary": "Service health check",
+        "description": "Health check for service-to-service clients. Validates Bearer token and confirms API connectivity.",
+        "operationId": "getPublicHealth",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "status": { "type": "string", "example": "healthy" },
+                        "timestamp": { "type": "string", "format": "date-time" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid Bearer token",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "examples": {
+                  "missing": {
+                    "summary": "No Bearer token",
+                    "value": { "success": false, "error": { "code": "UNAUTHORIZED", "message": "Bearer token required" } }
+                  },
+                  "invalid": {
+                    "summary": "Invalid token",
+                    "value": { "success": false, "error": { "code": "UNAUTHORIZED", "message": "Invalid or expired service token" } }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service authentication not configured",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" },
+                "example": {
+                  "success": false,
+                  "error": { "code": "SERVICE_AUTH_NOT_CONFIGURED", "message": "Service authentication is not configured" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/public/info": {
+      "get": {
+        "tags": ["Public API"],
+        "summary": "Public API metadata",
+        "description": "Returns API metadata and the authenticated service client's identity.",
+        "operationId": "getPublicInfo",
+        "security": [
+          { "bearerAuth": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public API info with client identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "name": { "type": "string", "example": "Alberta Government Internal API" },
+                        "version": { "type": "string", "example": "v1" },
+                        "client": {
+                          "type": "object",
+                          "properties": {
+                            "clientId": { "type": "string", "example": "abc12345-def6-7890-ghij-klmnopqrstuv" },
+                            "roles": {
+                              "type": "array",
+                              "items": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid Bearer token",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          },
+          "503": {
+            "description": "Service authentication not configured",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

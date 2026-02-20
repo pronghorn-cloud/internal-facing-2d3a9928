@@ -1,0 +1,133 @@
+/* Import GoA design tokens - must be first */
+@import "@abgov/design-tokens/dist/tokens.css";
+
+/* Import GoA web components CSS */
+@import "@abgov/web-components/index.css";
+
+/* Import Tailwind base styles for utility classes */
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+/* Base styles using GoA design tokens */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--goa-font-family-sans);
+  font-size: var(--goa-font-size-4);
+  line-height: var(--goa-line-height-3);
+  color: var(--goa-color-greyscale-black);
+  background: var(--goa-color-greyscale-white);
+}
+
+/* Vue cloak directive */
+[v-cloak] {
+  display: none;
+}
+
+/* Layout utility classes */
+.page-content {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: var(--goa-space-xl);
+  width: 100%;
+}
+
+.wide-content {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: var(--goa-space-xl);
+  width: 100%;
+}
+
+.form-content {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--goa-space-xl);
+  width: 100%;
+}
+
+/* Main content area - grows to push footer down */
+main {
+  flex: 1;
+}
+
+/* Visually hidden utility for screen readers */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Custom scrollbar for webkit browsers using GoA tokens */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--goa-color-greyscale-100);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--goa-color-greyscale-500);
+  border-radius: var(--goa-border-radius-m);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--goa-color-greyscale-700);
+}
+
+/* 2-column grid utility for GoA compliance (max 2 columns) */
+.card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--goa-space-l);
+}
+
+@media (min-width: 640px) {
+  .card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--goa-space-m);
+}
+
+@media (min-width: 640px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

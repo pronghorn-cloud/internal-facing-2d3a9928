@@ -1,0 +1,36 @@
+{
+  "name": "@template/web",
+  "version": "1.0.0",
+  "description": "Vue.js web app for Alberta Government enterprise template",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@abgov/design-tokens": "^1.4.2",
+    "@abgov/web-components": "^1.39.3",
+    "@template/shared": "*",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "autoprefixer": "^10.4.23",
+    "axios": "^1.13.5",
+    "pinia": "^2.3.1",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3",
+    "vite": "^5.4.18",
+    "vue": "^3.5.27",
+    "vue-router": "^4.5.0",
+    "vue-tsc": "^2.2.0"
+  },
+  "devDependencies": {
+    "@vue/test-utils": "^2.4.6",
+    "happy-dom": "^14.12.3",
+    "vitest": "^2.1.8"
+  }
+}
